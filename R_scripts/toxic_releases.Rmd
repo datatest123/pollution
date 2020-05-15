@@ -1,0 +1,220 @@
+---
+title: "Trends in Toxic Releases over Time in US Industry"
+author: "Chase Foster"
+date: "February 18, 2020"
+header-includes:
+   - \usepackage{color}
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r, echo=FALSE, message=FALSE}
+library(tidyverse)
+options(scipen=999)
+
+# import CSVs
+sums <- read_csv("/home/chase/Desktop/Data Science/EPA/state_sums.csv")
+means <- read_csv("/home/chase/Desktop/Data Science/EPA/reg_mean.csv")
+medians <- read_csv("/home/chase/Desktop/Data Science/EPA/reg_med.csv")
+means_no_reddog <- read_csv("/home/chase/Desktop/Data Science/EPA/reg_mean2.csv")
+
+red_dog <- read_csv("/home/chase/Desktop/Data Science/EPA/red_dog.csv")
+names(red_dog) <- c("Year", "Red Dog Total [lbs]", "US Total [lbs]", "Proportion of Total")
+red_dog['Proportion of Total'] <- round(red_dog['Proportion of Total'], digits=1)
+
+# mold data frames for ggplot
+sums <- sums %>%
+  pivot_longer(-st, names_to='year', values_to='releases')
+
+means <- means %>%
+  pivot_longer(-region, names_to='year', values_to='mean')
+
+medians <- medians %>%
+  pivot_longer(-region, names_to='year', values_to='median')
+
+means_no_reddog <- means_no_reddog %>%
+  pivot_longer(-region, names_to='year', values_to='mean')
+
+# region data
+means2 <- filter(means, region != 'US')
+medians2 <- filter(medians, region != 'US')
+
+# US data
+avg_us <- filter(means, region == 'US')
+med_us <- filter(medians, region == 'US')
+avg_us2 <- filter(means_no_reddog, region == 'US')
+
+# linear models for US
+avg_us_line <- lm(mean ~ as.integer(year), data=avg_us)
+avg_us_line2 <- lm(mean ~ as.integer(year), data=avg_us2)
+med_us_line <- lm(median ~ as.integer(year), data=med_us)
+```
+
+## Introduction 
+
+In the United States, much attention is being paid to environmental issues in politics, industry, and people's everyday lives. Awareness of these issues has resulted in efforts to decrease the negative impact our society has on the environment through individual and legislative action. [\textcolor{blue}{In 1970, the Environmental Protection Agency (EPA)}][1] was created under President Nixon to implement protective regulations to limit damages caused by various industries to the environment. One program the EPA uses to facilitate this goal is the Toxics Release Inventory (TRI), [\textcolor{blue}{created in 1987 as a response to several chemical releases}][2] that killed thousands of people in the US and India. This program requires companies to submit records to the EPA detailing the amounts of chemicals released, stored, recycled, transported, and processed each year. These data are openly available to the public and can be accessed easily online through [\textcolor{blue}{Data.gov}](https://www.data.gov/) and the [\textcolor{blue}{EPA website}](https://www.epa.gov/). 
+
+For this analysis, I worked to uncover trends in toxic chemical releases over time. The TRI program provides a substantial amount of industrial data that allows the public to examine how policy decisions have impacted toxic releases across the US. The contribution of this program towards safer industry can be quantified by analyzing TRI data over several years and demonstrating changes in toxic release patterns over this period.   This process can also be used to evaluate the efficacy of similar policy aimed at reducing environmental harm in industry. 
+
+In this report, I analyze TRI data to reveal trends in toxic chemical releases over time in the US. I use simple statistical methods to quantify change over time, and I provide easy-to-follow visualizations to illustrate these methods. I provide appropriate context to the decisions I make and the conclusions I draw, and I include a discussion of the limitations that these methods have for making predictions about future trends in industrial toxic releases. All the code I used to create this report is available in the attached GitHub directory. 
+
+## Data Collection and Cleaning
+
+The TRI data used in this report are available for download from the EPA database, which I accessed online [\textcolor{blue}{here}][3]. The relevant data for US-wide toxic releases are listed in the TRI Basic files at the federal level. These can be downloaded in CSV format for personal use. In this report, I use the TRI Basic data from 2003-2018, each downloaded separately. Historically, the EPA implemented the TRI Program in 1987 and has collected industrial toxic release information from that year to present. However, the TRI Program has undergone significant changes in policy and data classification over time. Major changes to their collection methodology occurred in [\textcolor{blue}{1991, 1998, and 2000}][4] (page 6 shows these different milestones). In 2002, the EPA adopted the [\textcolor{blue}{current classification regime}][5] used today in the TRI Basic data, and these changes were fully implemented by the 2003 collection year. In light of these changes, I restricted data collection to 2003 onward to match the consistency of the program. While this decision limits the amount of data used, it still provides a 16-year window of data on over 50,000 companies each year, allowing for statistically sound conclusions to be drawn from the population of companies.  
+
+The most pertinent TRI data for the purposes of this report are those containing information regarding the total amount of toxic releases into the environment reported by each company. These data are collected in the "On-Site Release Total" column of each file. Companies are also required to report the amounts of toxic chemicals processed in through other means (e.g. off-site recycling), but chemicals processed in these ways are [\textcolor{blue}{not classified as fugitive releases}][5] into the environment. I processed the on-site data and created several complementary CSV files containing information pertaining to the mean, median, and total releases by US State, region, and the US at large. These files are included in the GitHub directory. 
+
+For region data, I grouped the States according to the US Census definitions of [\textcolor{blue}{NE, S, MW, W}][6]. The TRI program also collects data on US territories, specifically Guam, Virgin Islands, District of Colombia, American Samoa, Northern Mariana Islands, and Puerto Rico. I excluded these locations from the region-level analysis, but I included them for US trends at large for completeness. US territories tend to have fewer companies than a given US state, so the amount of toxic releases therein is expected to be small relative to the US States.
+
+Additionally, while most release data are reported in pounds, certain chemicals called dioxins (and dioxin-like compounds) are reported in grams. These chemical releases are usually much smaller than releases of metals and other compounds, and they have a different impact on the environment and human health than other releases. For example, [\textcolor{blue}{Dioxin compounds have a proven carcinogenic effect in humans}][7], so it is important to minimize releases of these compounds as a matter of public health. Nevertheless, this report focuses on toxic releases in aggregate, not at the granular level. So I converted all releases to pounds for consistency, but I acknowledge that this may gloss over important trends in dioxin releases beyond the scope of this report. 
+
+## Data Analysis
+
+The first order of business is to see how the average amount of toxic releases in the US is changing over time. To quantify this pattern, the mean amount of toxic releases in the US each year is plotted in fig 1. Additionally, a simple least-squares linear model is superimposed in blue with a corresponding 95% confidence interval (CI) for the model shown in gray. We see immediately that the trend is very weak ($R^2 = `r round(summary(avg_us_line)$r.squared, digits=3)`$), and the width of the confidence interval indicates that there is high uncertainty in the model. Projecting these results forward would likely result in inaccurate predictions. 
+
+```{r}
+ggplot(avg_us, aes(as.integer(year),mean)) +
+  geom_point() +
+  geom_smooth(method='lm') +
+  labs(title = 'Average toxic release amount increasing slightly over time',
+       caption = 'Fig 1') +
+  theme(plot.title = element_text(hjust = 0)) +
+  xlab("Year") +
+  ylab("Mean Toxic Release Amount [lbs]")
+```
+
+Digging deeper, I plotted the average releases per year by region in fig 2. 
+
+```{r}
+ggplot(means, aes(year, mean, group=region)) +
+  geom_line(aes(col=region)) +
+  labs(title = 'Average toxic release amounts are high in the West',
+       caption = 'Fig 2') +
+  theme(plot.title = element_text(hjust = 0)) +
+  labs(color = 'Region') +
+  xlab("Year") +
+  ylab("Mean Toxic Release Amount [lbs]")
+```
+
+Here, we see that the average amount of toxic releases is considerably higher in the West each year than in the other regions. The same country-wide average release amount is shown for comparison. We can also observe the trend of average toxic releases in each region by separating each region out. The results of this process are shown in fig 3. Note that the vertical axes are different for each region because of differing ranges of toxic releases in each. 
+
+```{r}
+ggplot(means2, aes(year,mean,group=region)) +
+  geom_point() +
+  facet_grid(rows=vars(region), scales='free_y') +
+  geom_smooth(method='lm') + 
+  labs(title = 'Average releases are declining except in the West',
+       caption = 'Fig 3') +
+  theme(plot.title = element_text(hjust = 0)) +
+  xlab("Year") +
+  ylab("Mean Toxic Releases [lbs]")
+```
+
+In each region except the West, the average amount of toxic releases each year is tending downward, while the same quantity is tending upward in the West. It is clear that some companies in the West are buoying up the average for the country as a whole. But in which States are these high-release companies present? To answer this, I plotted the 95th percentile of total toxic releases per year by State in fig 4. 
+
+```{r}
+sum95 <- filter(sums, releases >= quantile(releases, prob=.95))
+
+ggplot(sum95, aes(year,releases,group=st)) +
+  geom_line(aes(col=st)) +
+  labs(title = 'Total toxic releases are disproportionately high in Alaska',
+       caption = 'Fig 4') +
+  theme(plot.title = element_text(hjust = 0)) +
+  labs(color = 'State') +
+  xlab("Year") +
+  ylab("Total Toxic Releases [lbs]")
+```
+
+These data indicate that companies in Alaska are clearly responsible for the highest total amount of toxic releases in the county, despite brief peaks in total releases in Nevada in 2011 and Utah in 2013. In fact, the pattern of total toxic releases in Alaska is similar to the average amount of toxic releases in the West observed in fig 2. 
+
+So what is happening in Alaska? To answer this question, I looked at which companies in Alaska produced the most toxic releases each year. In every year in the dataset, a company listed as "Red Dog Operations" produced the majority of toxic releases in Alaska. This company was listed several times each year, meaning they produced several types of toxic releases annually. After combining the different toxic release amounts per year, I obtained Red Dog's total toxic releases each year. Because these numbers were quite large (often exceeding 500,000,000 pounds in each year), I also calculated the proportion of the total toxic releases in the US for which Red Dog were responsible each year. These results are shown in Table 1 below.
+
+```{r}
+knitr::kable(red_dog, caption = 'Table 1')
+```
+
+It is immediately clear that Red Dog contributed a substantial proportion of all toxic releases in the US every year in the dataset. At most, in 2014, they were responsible for an astonishing `r round(max(red_dog['Proportion of Total']), digits=2)`% of all toxic releases in the US. These results are summarized graphically in fig 5. 
+
+```{r}
+ggplot(red_dog, aes(Year,`Proportion of Total`)) +
+  geom_line() +
+  labs(title = 'Red Dog produced large proportions of total toxic releases in the US',
+       caption = 'Fig 5') +
+  xlab('Year') +
+  ylab('Percent [%] of US Total Toxic Releases')
+```
+
+These results illustrate that toxic releases from Red Dog in Alaska are contributing disproportionately to the overall trend of toxic releases in not only the West but also the US at large. Indeed, if I remove Red Dog from the dataset altogether, then the overall trend in annual average toxic releases in the US becomes more obvious. This trend is shown in fig 6, where the average amount of toxic releases in US industry is now declining over time. 
+
+```{r}
+ggplot(avg_us2, aes(as.integer(year),mean)) +
+  geom_point() +
+  geom_smooth(method='lm') +
+  labs(title = 'Excluding Red Dog reveals true average toxic release decline over time',
+       caption = 'Fig 6') +
+  theme(plot.title = element_text(hjust = 0)) +
+  xlab("Year") +
+  ylab("Mean Toxic Release Amount [lbs]")
+```
+
+This model is a significantly better fit to the data ($R^2 =
+`r round(summary(avg_us_line2)$r.squared, digits=3)`$), and the 95% CI is much tighter, meaning that the uncertainty about predictions is much lower. 
+
+Until now, I have studied changes in US toxic releases using annual mean amounts, but as we have seen, the mean is not robust to outlier companies that produce extremely high amounts of toxic releases. Another useful statistic for this analysis is the median amount of annual toxic releases because the median is less sensitive to outlier companies. Fig 7 shows the median amount of toxic releases in the US over the same 16-year time frame as before. 
+
+```{r}
+ggplot(med_us, aes(as.integer(year),median)) +
+  geom_point() +
+  geom_smooth(method='lm') +
+  labs(title = 'Median releases are declining across the US',
+       caption = 'Fig 7') +
+  theme(plot.title = element_text(hjust = 0)) +
+  xlab("Year") +
+  ylab("Median Toxic Releases [lbs]") 
+```
+
+This model is fits the data fairly well ($R^2 =
+`r round(summary(med_us_line)$r.squared, digits=3)`$), and the 95% CI shows that there is less uncertainty in the median model than in the mean model shown in fig 1. Another interesting piece of information is that the median toxic release amount annually is several orders of magnitude lower than the average amount each year, suggesting that at least 50% of companies produce relatively low amounts of toxic releases (under 100 pounds) per year. These patterns are reflected in the median toxic release amount each year by region, as shown in fig 8.
+
+```{r}
+ggplot(medians, aes(year, median, group=region)) +
+  geom_line(aes(col=region)) +
+  labs(title = 'Median toxic releases are higher in the South',
+       caption = 'Fig 8') +
+  theme(plot.title = element_text(hjust = 0)) +
+  labs(color = 'Region') +
+  xlab("Year") +
+  ylab("Median Toxic Releases [lbs]") 
+```
+
+This time, we see that the median company in the South produces higher toxic releases than the median company in the US overall, contrasting with the results based on the average toxic release amount in fig 2, where companies in the West produced well above the average amount. As an aside, the median data indicate that companies in the South have a relatively larger impact on the environment through annual toxic releases, and these data would need to be considered in policy decision-making along with the data shown in fig 2 for completeness. Nevertheless, the median amount of toxic releases is declining in each region over time, as shown in fig 9. As before, note that the range of median toxic releases is different for each region. 
+
+```{r}
+ggplot(medians2, aes(year,median,group=region)) +
+  geom_point() +
+  facet_grid(rows=vars(region), scales='free_y') +
+  geom_smooth(method='lm') + 
+  labs(title = 'Median toxic releases are declining in all regions',
+       caption = 'Fig 9') +
+  theme(plot.title = element_text(hjust = 0)) +
+  xlab("Year") +
+  ylab("Median Toxic Releases [lbs]") 
+```
+
+## Conclusions
+
+With the removal of Red Dog from the mean data, both the mean and median amounts of toxic releases in the US are decreasing annually, showing that toxic releases in US industry have been lowered over time. These data provide evidence for the success of the EPA TRI program in reducing the amount of toxic releases by US companies into the environment. However, it is not possible to conclude that the aforementioned program is solely responsible for these trends.  This study only demonstrates the association of the TRI program with lower toxic releases over time, but it does not attempt to isolate the exact causes of this decline. There may be other confounding factors that contribute to the lowering of toxic releases. For example, as technology advances, novel methods of toxic waste processing are developed and implemented in industry, and these methods also have an impact on the amount of toxic releases produced by companies. One such advancement is the [\textcolor{blue}{recycling of plastics using sunlight}][8]. 
+
+The simple models used in this study are sufficient to understand general trends in toxic releases, but they are not necessarily predictive of future outcomes. Time is the main variable considered here, but while this study demonstrates high correlation between time and lower toxic releases, the passage of time alone is not an impetus for change in industrial trends. Still, there is no reason to suspect that these trends will suddenly reverse because EPA policy and technological advancement have been mostly consistent over time. While the exact amounts of toxic releases are unpredictable, they will probably continue to decline over time. 
+
+[1]: https://en.wikipedia.org/wiki/United_States_Environmental_Protection_Agency
+[2]: https://www.epa.gov/toxics-release-inventory-tri-program/what-toxics-release-inventory
+[3]: https://www.epa.gov/toxics-release-inventory-tri-program/tri-basic-data-files-calendar-years-1987-2018
+[4]: https://www.epa.gov/sites/production/files/2019-03/documents/factors_to_consider_march_2019.pdf
+[5]: https://www.epa.gov/sites/production/files/2019-08/documents/basic_data_files_documentation_aug_2019_v2.pdf
+[6]: https://www2.census.gov/geo/pdfs/maps-data/maps/reference/us_regdiv.pdf
+[7]: https://www.epa.gov/dioxin/learn-about-dioxin
+[8]: https://onlinelibrary.wiley.com/doi/full/10.1002/advs.201902020
