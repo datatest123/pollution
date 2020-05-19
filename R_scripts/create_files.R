@@ -1,5 +1,5 @@
 library(tidyverse)
-first <- "/home/chase/Desktop/Data Science/EPA/tri_"
+first <- "https://raw.githubusercontent.com/datatest123/pollution/master/CSVs/tri_"
 last <- "_us.csv"
 
 # region helper function used to assign each State to a region
@@ -97,11 +97,12 @@ for (i in 2003:2018){
   }
 }
 
-# pathways to write
-sum_file = "/home/chase/Desktop/Data Science/EPA/state_sums.csv"
-mean_file = "/home/chase/Desktop/Data Science/EPA/reg_mean.csv"
-med_file = "/home/chase/Desktop/Data Science/EPA/reg_med.csv"
-#mean_file2 = "/home/chase/Desktop/Data Science/EPA/reg_mean2.csv"
+# create csvs (replace "user" with your username)
+# note: created on Linux; change path for Windows
+sum_file = "/home/user/Documents/state_sums.csv"
+mean_file = "/home/user/Documents/reg_mean.csv"
+med_file = "/home/user/Documents/reg_med.csv"
+#mean_file2 = "/home/user/Documents/reg_mean2.csv"
 
 # create CSVs for later
 write_csv(sums, sum_file)

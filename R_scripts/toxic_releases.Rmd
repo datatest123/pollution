@@ -16,12 +16,12 @@ library(tidyverse)
 options(scipen=999)
 
 # import CSVs
-sums <- read_csv("/home/chase/Desktop/Data Science/EPA/state_sums.csv")
-means <- read_csv("/home/chase/Desktop/Data Science/EPA/reg_mean.csv")
-medians <- read_csv("/home/chase/Desktop/Data Science/EPA/reg_med.csv")
-means_no_reddog <- read_csv("/home/chase/Desktop/Data Science/EPA/reg_mean2.csv")
+sums <- read_csv("https://raw.githubusercontent.com/datatest123/pollution/master/CSVs/state_sums.csv")
+means <- read_csv("https://raw.githubusercontent.com/datatest123/pollution/master/CSVs/reg_mean.csv")
+medians <- read_csv("https://raw.githubusercontent.com/datatest123/pollution/master/CSVs/reg_med.csv")
+means_no_reddog <- read_csv("https://raw.githubusercontent.com/datatest123/pollution/master/CSVs/reg_mean2.csv")
 
-red_dog <- read_csv("/home/chase/Desktop/Data Science/EPA/red_dog.csv")
+red_dog <- read_csv("https://raw.githubusercontent.com/datatest123/pollution/master/CSVs/red_dog.csv")
 names(red_dog) <- c("Year", "Red Dog Total [lbs]", "US Total [lbs]", "Proportion of Total")
 red_dog['Proportion of Total'] <- round(red_dog['Proportion of Total'], digits=1)
 

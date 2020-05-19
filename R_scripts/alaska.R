@@ -1,9 +1,9 @@
 library(tidyverse)
-first <- "/home/chase/Desktop/Data Science/EPA/tri_"
+first <- "https://raw.githubusercontent.com/datatest123/pollution/master/CSVs/tri_"
 last <- "_us.csv"
 
 # import totals
-sums <- read_csv("/home/chase/Desktop/Data Science/EPA/state_sums.csv")
+sums <- read_csv("https://raw.githubusercontent.com/datatest123/pollution/master/CSVs/state_sums.csv")
 
 # loop over all years in dataset
 for (i in 2003:2018){
@@ -40,5 +40,7 @@ for (i in 2003:2018){
 }
 
 red_dog <- mutate(red_dog, percent = red_dog_total/total*100)
-red_dog_file <- "/home/chase/Desktop/Data Science/EPA/red_dog.csv"
+
+# create csv; will need to change path to run on Windows
+red_dog_file <- "/home/user/Documents/red_dog.csv"
 write_csv(red_dog, red_dog_file)
